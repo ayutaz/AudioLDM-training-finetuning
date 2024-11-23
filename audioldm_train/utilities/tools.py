@@ -80,12 +80,14 @@ def read_json(dataset_json_file):
 
 
 def copy_test_subset_data(metadata, testset_copy_target_path):
-    # metadata = read_json(testset_metadata)
+    import os
+    import shutil
+
     os.makedirs(testset_copy_target_path, exist_ok=True)
     if len(os.listdir(testset_copy_target_path)) == len(metadata):
         return
     else:
-        # delete files in folder testset_copy_target_path
+        # フォルダ内のファイルを削除
         for file in os.listdir(testset_copy_target_path):
             try:
                 os.remove(os.path.join(testset_copy_target_path, file))
@@ -94,8 +96,9 @@ def copy_test_subset_data(metadata, testset_copy_target_path):
 
     print("Copying test subset data to {}".format(testset_copy_target_path))
     for each in tqdm(metadata):
-        cmd = "cp {} {}".format(each["wav"], os.path.join(testset_copy_target_path))
-        os.system(cmd)
+        source = each["wav"]
+        destination = testset_copy_target_path
+        shutil.copy(source, destination)
 
 
 def listdir_nohidden(path):

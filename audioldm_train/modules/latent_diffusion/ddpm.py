@@ -17,6 +17,7 @@ from torchvision.utils import make_grid
 from pytorch_lightning.utilities.rank_zero import rank_zero_only
 from audioldm_train.conditional_models import *
 import datetime
+import re
 
 from audioldm_train.utilities.model_util import (
     exists,
@@ -1853,6 +1854,10 @@ class LatentDiffusion(DDPM):
         limit_num=None,
         **kwargs,
     ):
+        def sanitize_filename(name):
+            # Windowsで使用できない文字をアンダースコアに置換
+            return re.sub(r'[<>:"/\\|?*]', '_', name)
+
         # Generate n_gen times and select the best
         # Batch: audio, text, fnames
         assert x_T is None
@@ -1867,6 +1872,9 @@ class LatentDiffusion(DDPM):
         use_ddim = ddim_steps is not None
         if name is None:
             name = self.get_validation_folder_name()
+
+        # nameをサニタイズ
+        name = sanitize_filename(name)
 
         waveform_save_path = os.path.join(self.get_log_dir(), name)
         waveform_save_path = waveform_save_path.replace("val_0", "infer")
@@ -1896,8 +1904,8 @@ class LatentDiffusion(DDPM):
                 # The condition to the diffusion wrapper can have many format
                 for cond_key in c.keys():
                     if isinstance(c[cond_key], list):
-                        for i in range(len(c[cond_key])):
-                            c[cond_key][i] = torch.cat([c[cond_key][i]] * n_gen, dim=0)
+                        for idx in range(len(c[cond_key])):
+                            c[cond_key][idx] = torch.cat([c[cond_key][idx]] * n_gen, dim=0)
                     elif isinstance(c[cond_key], dict):
                         for k in c[cond_key].keys():
                             c[cond_key][k] = torch.cat([c[cond_key][k]] * n_gen, dim=0)
@@ -1940,10 +1948,10 @@ class LatentDiffusion(DDPM):
                         similarity = self.clap.cos_similarity(
                             torch.FloatTensor(waveform).squeeze(1), text
                         )
-                        for i in range(z.shape[0]):
-                            candidates = similarity[i :: z.shape[0]]
+                        for idx in range(z.shape[0]):
+                            candidates = similarity[idx :: z.shape[0]]
                             max_index = torch.argmax(candidates).item()
-                            best_index.append(i + max_index * z.shape[0])
+                            best_index.append(idx + max_index * z.shape[0])
 
                         waveform = waveform[best_index]
 
